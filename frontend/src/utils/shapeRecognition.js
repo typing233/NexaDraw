@@ -75,8 +75,8 @@ function recognizeByGeometry(element) {
       return {
         id: element.id || uuidv4(),
         type: 'circle',
-        x: centerX - radius,
-        y: centerY - radius,
+        x: centerX,
+        y: centerY,
         radiusX: radius,
         radiusY: radius,
         color: element.color || '#1e1e1e',
@@ -91,8 +91,8 @@ function recognizeByGeometry(element) {
       return {
         id: element.id || uuidv4(),
         type: 'circle',
-        x: centerX - width / 2,
-        y: centerY - height / 2,
+        x: centerX,
+        y: centerY,
         radiusX: width / 2,
         radiusY: height / 2,
         color: element.color || '#1e1e1e',
@@ -485,8 +485,8 @@ function convertToStandardShape(type, element) {
       return {
         id: element.id || uuidv4(),
         type: 'circle',
-        x: centerX - width / 2,
-        y: centerY - height / 2,
+        x: centerX,
+        y: centerY,
         radiusX: width / 2,
         radiusY: height / 2,
         color: element.color || '#1e1e1e',

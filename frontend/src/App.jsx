@@ -21,6 +21,7 @@ const TOOLS = {
 function App() {
   const [currentTool, setCurrentTool] = useState(TOOLS.SELECT);
   const [elements, setElements] = useState([]);
+  const [selectedElementId, setSelectedElementId] = useState(null);
   const [userId] = useState(() => uuidv4());
   const [userName, setUserName] = useState(() => {
     const randomName = `用户${Math.floor(Math.random() * 10000)}`;
@@ -115,8 +116,17 @@ function App() {
 
   const handleElementDelete = (elementId) => {
     setElements(prev => prev.filter(e => e.id !== elementId));
+    if (selectedElementId === elementId) {
+      setSelectedElementId(null);
+    }
     if (roomId && isConnected) {
       sendElementDelete(roomId, elementId);
+    }
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedElementId) {
+      handleElementDelete(selectedElementId);
     }
   };
 
@@ -247,6 +257,8 @@ function App() {
           currentTool={currentTool} 
           onToolChange={setCurrentTool} 
           tools={TOOLS}
+          selectedElementId={selectedElementId}
+          onDelete={handleDeleteSelected}
         />
         
         <Canvas
@@ -260,6 +272,8 @@ function App() {
           roomId={roomId}
           isConnected={isConnected}
           apiConfig={apiConfig}
+          selectedElementId={selectedElementId}
+          onSelectedElementChange={setSelectedElementId}
         />
 
         {showSettings && (

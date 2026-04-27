@@ -60,7 +60,7 @@ const TOOL_NAMES = {
   text: '文本'
 };
 
-function Toolbar({ currentTool, onToolChange, tools }) {
+function Toolbar({ currentTool, onToolChange, tools, selectedElementId, onDelete }) {
   const toolList = Object.values(tools);
 
   return (
@@ -115,8 +115,9 @@ function Toolbar({ currentTool, onToolChange, tools }) {
       }} />
       
       <button
-        onClick={() => {}}
-        title="删除 (Delete)"
+        onClick={onDelete}
+        disabled={!selectedElementId}
+        title={selectedElementId ? "删除 (Delete)" : "请先选择元素"}
         style={{
           width: '40px',
           height: '40px',
@@ -124,10 +125,10 @@ function Toolbar({ currentTool, onToolChange, tools }) {
           alignItems: 'center',
           justifyContent: 'center',
           border: 'none',
-          backgroundColor: 'transparent',
-          color: '#ef4444',
+          backgroundColor: selectedElementId ? '#fef2f2' : 'transparent',
+          color: selectedElementId ? '#ef4444' : '#999',
           borderRadius: '6px',
-          cursor: 'pointer'
+          cursor: selectedElementId ? 'pointer' : 'not-allowed'
         }}
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
