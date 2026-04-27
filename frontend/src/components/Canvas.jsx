@@ -40,18 +40,26 @@ function Canvas({
   userId,
   roomId,
   isConnected,
-  apiConfig
+  apiConfig,
+  selectedElementId,
+  onSelectedElementChange
 }) {
   const containerRef = useRef(null);
   const svgRef = useRef(null);
+  const inputRef = useRef(null);
   const [camera, setCamera] = useState({ x: 0, y: 0, zoom: 1 });
   const [isDragging, setIsDragging] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
   const [currentElement, setCurrentElement] = useState(null);
-  const [selectedElementId, setSelectedElementId] = useState(null);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [origin, setOrigin] = useState({ x: 0, y: 0 });
   const [isRecognizing, setIsRecognizing] = useState(false);
+  
+  const [editingTextElement, setEditingTextElement] = useState(null);
+  const [editingText, setEditingText] = useState('');
+  const [editPosition, setEditPosition] = useState({ x: 0, y: 0 });
+  const [lastClickTime, setLastClickTime] = useState(0);
+  const [lastClickedElementId, setLastClickedElementId] = useState(null);
 
   const getScreenPoint = useCallback((clientX, clientY) => {
     if (!containerRef.current) return { x: 0, y: 0 };
@@ -62,8 +70,40 @@ function Canvas({
     };
   }, [camera]);
 
+  const startTextEdit = useCallback((element, screenX, screenY) => {
+    setEditingTextElement(element);
+    setEditingText(element.text || '');
+    setEditPosition({ x: screenX, y: screenY - 25 });
+    setTimeout(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }, 0);
+  }, []);
+
+  const finishTextEdit = useCallback(() => {
+    if (editingTextElement) {
+      const updatedElement = {
+        ...editingTextElement,
+        text: editingText
+      };
+      onElementUpdate(updatedElement);
+    }
+    setEditingTextElement(null);
+    setEditingText('');
+  }, [editingTextElement, editingText, onElementUpdate]);
+
+  const cancelTextEdit = useCallback(() => {
+    setEditingTextElement(null);
+    setEditingText('');
+  }, []);
+
   const handlePointerDown = useCallback((e) => {
     const point = getScreenPoint(e.clientX, e.clientY);
+    const currentTime = Date.now();
+
+    if (editingTextElement) {
+      cancelTextEdit();
+    }
 
     if (currentTool === 'hand' || (e.button === 1 && e.altKey)) {
       setIsPanning(true);
@@ -76,20 +116,50 @@ function Canvas({
       for (let i = elements.length - 1; i >= 0; i--) {
         const el = elements[i];
         if (isPointInElement(point, el)) {
-          setSelectedElementId(el.id);
+          if (el.type === 'text' && 
+              lastClickedElementId === el.id && 
+              currentTime - lastClickTime < 300) {
+            startTextEdit(el, e.clientX, e.clientY);
+            setLastClickedElementId(null);
+            setLastClickTime(0);
+            return;
+          }
+
+          if (onSelectedElementChange) {
+            onSelectedElementChange(el.id);
+          }
+          setSelectedElementId?.(el.id);
+          setLastClickedElementId(el.id);
+          setLastClickTime(currentTime);
+          
           setIsDragging(true);
           setPanStart(point);
           return;
         }
       }
-      setSelectedElementId(null);
+      
+      if (onSelectedElementChange) {
+        onSelectedElementChange(null);
+      }
+      setSelectedElementId?.(null);
+      setLastClickedElementId(null);
+      setLastClickTime(0);
+      return;
+    }
+
+    if (currentTool === 'text') {
+      const newElement = createNewElement(currentTool, point);
+      onElementUpdate(newElement);
+      startTextEdit(newElement, e.clientX, e.clientY);
       return;
     }
 
     setIsDragging(true);
     const newElement = createNewElement(currentTool, point);
     setCurrentElement(newElement);
-  }, [currentTool, camera, elements, getScreenPoint]);
+  }, [currentTool, camera, elements, getScreenPoint, selectedElementId,
+      editingTextElement, cancelTextEdit, startTextEdit,
+      lastClickTime, lastClickedElementId, onSelectedElementChange, setSelectedElementId]);
 
   const handlePointerMove = useCallback((e) => {
     const point = getScreenPoint(e.clientX, e.clientY);
@@ -177,15 +247,32 @@ function Canvas({
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Delete' && selectedElementId) {
-        onElementDelete(selectedElementId);
-        setSelectedElementId(null);
+      if (editingTextElement) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          finishTextEdit();
+        } else if (e.key === 'Escape') {
+          cancelTextEdit();
+        }
+        return;
+      }
+
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedElementId) {
+          e.preventDefault();
+          onElementDelete(selectedElementId);
+          if (onSelectedElementChange) {
+            onSelectedElementChange(null);
+          }
+          setSelectedElementId?.(null);
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedElementId, onElementDelete]);
+  }, [selectedElementId, editingTextElement, onElementDelete, 
+      finishTextEdit, cancelTextEdit, onSelectedElementChange, setSelectedElementId]);
 
   return (
     <div
@@ -254,6 +341,31 @@ function Canvas({
           })}
         </g>
       </svg>
+
+      {editingTextElement && (
+        <input
+          ref={inputRef}
+          type="text"
+          value={editingText}
+          onChange={(e) => setEditingText(e.target.value)}
+          onBlur={finishTextEdit}
+          placeholder="输入文本..."
+          style={{
+            position: 'absolute',
+            left: editPosition.x,
+            top: editPosition.y,
+            padding: '6px 10px',
+            border: '2px solid #4f46e5',
+            borderRadius: '4px',
+            fontSize: editingTextElement.fontSize || 16,
+            outline: 'none',
+            backgroundColor: 'white',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+            zIndex: 1000,
+            minWidth: '120px'
+          }}
+        />
+      )}
 
       {isRecognizing && (
         <div style={{
@@ -458,12 +570,10 @@ function renderElement(element, isSelected) {
       );
     }
     case 'circle': {
-      const cx = element.x + (element.radiusX > 0 ? 0 : -element.radiusX * 2);
-      const cy = element.y + (element.radiusY > 0 ? 0 : -element.radiusY * 2);
       return (
         <ellipse
-          cx={cx}
-          cy={cy}
+          cx={element.x}
+          cy={element.y}
           rx={Math.abs(element.radiusX)}
           ry={Math.abs(element.radiusY)}
           fill={element.fill}
@@ -521,15 +631,44 @@ function renderElement(element, isSelected) {
     }
     case 'text': {
       return (
-        <text
-          x={element.x}
-          y={element.y}
-          fontSize={element.fontSize}
-          fill={element.color}
-          style={selectionStyle}
-        >
-          {element.text || '双击编辑'}
-        </text>
+        <g style={selectionStyle}>
+          {element.text && (
+            <text
+              x={element.x}
+              y={element.y}
+              fontSize={element.fontSize}
+              fill={element.color}
+              dominantBaseline="middle"
+            >
+              {element.text}
+            </text>
+          )}
+          {!element.text && (
+            <g>
+              <text
+                x={element.x}
+                y={element.y}
+                fontSize={element.fontSize}
+                fill="#999"
+                dominantBaseline="middle"
+                fontStyle="italic"
+              >
+                双击编辑
+              </text>
+              <rect
+                x={element.x - 4}
+                y={element.y - element.fontSize}
+                width={80}
+                height={element.fontSize * 1.5}
+                fill="transparent"
+                stroke="#ddd"
+                strokeWidth="1"
+                strokeDasharray="4,2"
+                rx="2"
+              />
+            </g>
+          )}
+        </g>
       );
     }
     default:
@@ -550,12 +689,10 @@ function isPointInElement(point, element) {
              point.y >= y - tolerance && point.y <= y + height + tolerance;
     }
     case 'circle': {
-      const cx = element.x + (element.radiusX > 0 ? 0 : -element.radiusX * 2);
-      const cy = element.y + (element.radiusY > 0 ? 0 : -element.radiusY * 2);
-      const rx = Math.abs(element.radiusX);
-      const ry = Math.abs(element.radiusY);
-      const dx = (point.x - cx) / (rx + tolerance);
-      const dy = (point.y - cy) / (ry + tolerance);
+      const rx = Math.max(Math.abs(element.radiusX), 1);
+      const ry = Math.max(Math.abs(element.radiusY), 1);
+      const dx = (point.x - element.x) / (rx + tolerance);
+      const dy = (point.y - element.y) / (ry + tolerance);
       return dx * dx + dy * dy <= 1;
     }
     case 'arrow':
@@ -577,6 +714,12 @@ function isPointInElement(point, element) {
         }
       }
       return false;
+    }
+    case 'text': {
+      const textWidth = element.text ? element.text.length * (element.fontSize || 16) * 0.6 : 80;
+      const textHeight = (element.fontSize || 16) * 1.5;
+      return point.x >= element.x - tolerance && point.x <= element.x + textWidth + tolerance &&
+             point.y >= element.y - textHeight / 2 - tolerance && point.y <= element.y + textHeight / 2 + tolerance;
     }
     default:
       return false;
