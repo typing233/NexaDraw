@@ -99,11 +99,18 @@ function getSystemPromptForChartType(chartType) {
   "strokeWidth": 2
 }
 
-注意事项：
-- x, y 坐标从左上角开始
-- 元素之间要有适当的间距
-- 箭头要连接相关的节点
-- 文本元素用于标题和标签`;
+重要：坐标表示方式
+- 矩形 (rectangle)：x, y 表示左上角坐标
+- 圆形 (circle)：x, y 表示中心点坐标 (cx, cy)，radiusX 和 radiusY 是半径
+- 文本 (text)：x, y 表示文本基线位置
+- 箭头/直线：x, y 是起点，endX, endY 是终点
+
+布局建议：
+- 元素之间要有适当的间距（建议 40px 以上）
+- 箭头起点应该连接到前一个节点的右侧边缘
+- 箭头终点应该连接到后一个节点的左侧边缘
+- 圆形节点的箭头连接点：从中心右侧 (x + radiusX) 出发，到中心左侧 (x - radiusX) 结束
+- 矩形节点的箭头连接点：从右上角 (x + width, y + height/2) 出发，到左上角 (x, y + height/2) 结束`;
 
   const typeSpecificPrompts = {
     flowchart: `\n\n流程图布局规则：
@@ -201,24 +208,34 @@ function convertNodesAndConnections(nodes, connections) {
   const nodeHeight = 50;
   const gapX = 40;
   const gapY = 30;
+  const circleRadius = 40;
   
   nodes.forEach((node, index) => {
     const row = Math.floor(index / 3);
     const col = index % 3;
     
-    const x = startX + col * (nodeWidth + gapX);
-    const y = startY + row * (nodeHeight + gapY);
+    const isCircle = node.type === 'circle' || node.shape === 'circle';
+    
+    let x, y;
+    
+    if (isCircle) {
+      x = startX + col * (nodeWidth + gapX) + nodeWidth / 2;
+      y = startY + row * (nodeHeight + gapY) + nodeHeight / 2;
+    } else {
+      x = startX + col * (nodeWidth + gapX);
+      y = startY + row * (nodeHeight + gapY);
+    }
     
     const element = {
       id: node.id || uuidv4(),
-      type: node.type || (node.shape === 'circle' ? 'circle' : 'rectangle'),
+      type: isCircle ? 'circle' : 'rectangle',
       x,
       y,
       text: node.text || node.label || node.content || '',
       width: nodeWidth,
       height: nodeHeight,
-      radiusX: 40,
-      radiusY: 40,
+      radiusX: circleRadius,
+      radiusY: circleRadius,
       color: '#1e1e1e',
       strokeWidth: 2,
       fill: 'transparent',
@@ -234,13 +251,31 @@ function convertNodesAndConnections(nodes, connections) {
     const toNode = nodeMap.get(conn.to);
     
     if (fromNode && toNode) {
+      let startX, startY, endX, endY;
+      
+      if (fromNode.type === 'circle') {
+        startX = fromNode.x + fromNode.radiusX;
+        startY = fromNode.y;
+      } else {
+        startX = fromNode.x + fromNode.width;
+        startY = fromNode.y + fromNode.height / 2;
+      }
+      
+      if (toNode.type === 'circle') {
+        endX = toNode.x - toNode.radiusX;
+        endY = toNode.y;
+      } else {
+        endX = toNode.x;
+        endY = toNode.y + toNode.height / 2;
+      }
+      
       const arrow = {
         id: uuidv4(),
         type: 'arrow',
-        x: fromNode.x + fromNode.width,
-        y: fromNode.y + fromNode.height / 2,
-        endX: toNode.x,
-        endY: toNode.y + toNode.height / 2,
+        x: startX,
+        y: startY,
+        endX: endX,
+        endY: endY,
         color: '#666666',
         strokeWidth: 2,
         timestamp: Date.now()
@@ -381,12 +416,79 @@ function simpleOrganize(elements) {
     const row = Math.floor(index / 3);
     const col = index % 3;
     
-    const x = startX + col * (nodeWidth + gapX);
-    const y = startY + row * (nodeHeight + gapY);
+    let x, y;
+    
+    if (node.type === 'circle') {
+      x = startX + col * (nodeWidth + gapX) + nodeWidth / 2;
+      y = startY + row * (nodeHeight + gapY) + nodeHeight / 2;
+    } else {
+      x = startX + col * (nodeWidth + gapX);
+      y = startY + row * (nodeHeight + gapY);
+    }
     
     const elIndex = result.findIndex(el => el.id === node.id);
     if (elIndex !== -1) {
       result[elIndex] = { ...result[elIndex], x, y };
+    }
+  });
+
+  const nodeMap = new Map();
+  result.forEach(el => {
+    if (el.type === 'rectangle' || el.type === 'circle' || el.type === 'text') {
+      nodeMap.set(el.id, el);
+    }
+  });
+
+  result.forEach((el, index) => {
+    if (el.type === 'arrow' || el.type === 'line') {
+      let fromNode = null;
+      let toNode = null;
+      
+      for (const [id, node] of nodeMap) {
+        const distFromStart = Math.sqrt(
+          Math.pow(el.x - (node.type === 'circle' ? node.x : node.x + node.width / 2), 2) +
+          Math.pow(el.y - (node.type === 'circle' ? node.y : node.y + node.height / 2), 2)
+        );
+        const distFromEnd = Math.sqrt(
+          Math.pow(el.endX - (node.type === 'circle' ? node.x : node.x + node.width / 2), 2) +
+          Math.pow(el.endY - (node.type === 'circle' ? node.y : node.y + node.height / 2), 2)
+        );
+        
+        if (distFromStart < 100 && !fromNode) {
+          fromNode = node;
+        }
+        if (distFromEnd < 100 && !toNode) {
+          toNode = node;
+        }
+      }
+      
+      if (fromNode && toNode) {
+        let newX, newY, newEndX, newEndY;
+        
+        if (fromNode.type === 'circle') {
+          newX = fromNode.x + fromNode.radiusX;
+          newY = fromNode.y;
+        } else {
+          newX = fromNode.x + fromNode.width;
+          newY = fromNode.y + fromNode.height / 2;
+        }
+        
+        if (toNode.type === 'circle') {
+          newEndX = toNode.x - toNode.radiusX;
+          newEndY = toNode.y;
+        } else {
+          newEndX = toNode.x;
+          newEndY = toNode.y + toNode.height / 2;
+        }
+        
+        result[index] = {
+          ...el,
+          x: newX,
+          y: newY,
+          endX: newEndX,
+          endY: newEndY
+        };
+      }
     }
   });
 
