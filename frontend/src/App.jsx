@@ -42,7 +42,7 @@ function App() {
     };
   });
 
-  const { isConnected, joinRoom, leaveRoom, sendElementUpdate, sendElementDelete } = useCollaboration({
+  const { isConnected, joinRoom, leaveRoom, sendElementUpdate, sendElementDelete, sendCursorUpdate } = useCollaboration({
     userId,
     userName,
     onElementUpdate: (element) => {
@@ -89,15 +89,6 @@ function App() {
   useEffect(() => {
     localStorage.setItem('nexadraw_api_config', JSON.stringify(apiConfig));
   }, [apiConfig]);
-
-  const handleElementsChange = (newElements) => {
-    setElements(newElements);
-    if (roomId && isConnected) {
-      newElements.forEach(element => {
-        sendElementUpdate(roomId, element);
-      });
-    }
-  };
 
   const handleElementUpdate = (element) => {
     setElements(prev => {
@@ -274,6 +265,7 @@ function App() {
           apiConfig={apiConfig}
           selectedElementId={selectedElementId}
           onSelectedElementChange={setSelectedElementId}
+          onSendCursorUpdate={sendCursorUpdate}
         />
 
         {showSettings && (

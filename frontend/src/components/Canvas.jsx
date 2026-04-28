@@ -42,7 +42,8 @@ function Canvas({
   isConnected,
   apiConfig,
   selectedElementId,
-  onSelectedElementChange
+  onSelectedElementChange,
+  onSendCursorUpdate
 }) {
   const containerRef = useRef(null);
   const svgRef = useRef(null);
@@ -109,6 +110,7 @@ function Canvas({
       setIsPanning(true);
       setPanStart({ x: e.clientX, y: e.clientY });
       setOrigin({ x: camera.x, y: camera.y });
+      e.currentTarget.setPointerCapture(e.pointerId);
       return;
     }
 
@@ -128,12 +130,12 @@ function Canvas({
           if (onSelectedElementChange) {
             onSelectedElementChange(el.id);
           }
-          setSelectedElementId?.(el.id);
           setLastClickedElementId(el.id);
           setLastClickTime(currentTime);
           
           setIsDragging(true);
           setPanStart(point);
+          e.currentTarget.setPointerCapture(e.pointerId);
           return;
         }
       }
@@ -141,7 +143,6 @@ function Canvas({
       if (onSelectedElementChange) {
         onSelectedElementChange(null);
       }
-      setSelectedElementId?.(null);
       setLastClickedElementId(null);
       setLastClickTime(0);
       return;
@@ -157,9 +158,10 @@ function Canvas({
     setIsDragging(true);
     const newElement = createNewElement(currentTool, point);
     setCurrentElement(newElement);
+    e.currentTarget.setPointerCapture(e.pointerId);
   }, [currentTool, camera, elements, getScreenPoint, selectedElementId,
-      editingTextElement, cancelTextEdit, startTextEdit,
-      lastClickTime, lastClickedElementId, onSelectedElementChange, setSelectedElementId]);
+      editingTextElement, cancelTextEdit, startTextEdit, onElementUpdate,
+      lastClickTime, lastClickedElementId, onSelectedElementChange]);
 
   const handlePointerMove = useCallback((e) => {
     const point = getScreenPoint(e.clientX, e.clientY);
@@ -194,8 +196,12 @@ function Canvas({
       const updatedElement = updateElement(currentElement, point, currentTool);
       setCurrentElement(updatedElement);
     }
+
+    if (roomId && isConnected && onSendCursorUpdate) {
+      onSendCursorUpdate(roomId, point);
+    }
   }, [isDragging, isPanning, currentElement, currentTool, selectedElementId, elements,
-      panStart, origin, getScreenPoint, onElementUpdate]);
+      panStart, origin, getScreenPoint, onElementUpdate, roomId, isConnected, onSendCursorUpdate]);
 
   const handlePointerUp = useCallback(async (e) => {
     if (isPanning) {
@@ -264,7 +270,6 @@ function Canvas({
           if (onSelectedElementChange) {
             onSelectedElementChange(null);
           }
-          setSelectedElementId?.(null);
         }
       }
     };
@@ -272,7 +277,7 @@ function Canvas({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedElementId, editingTextElement, onElementDelete, 
-      finishTextEdit, cancelTextEdit, onSelectedElementChange, setSelectedElementId]);
+      finishTextEdit, cancelTextEdit, onSelectedElementChange]);
 
   return (
     <div
