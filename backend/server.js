@@ -75,6 +75,24 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('leave-room', (roomId) => {
+    const userData = users.get(socket.id);
+    if (userData) {
+      const { userId, userName } = userData;
+      const room = rooms.get(roomId);
+      if (room) {
+        room.users.delete(socket.id);
+        socket.to(roomId).emit('user-left', userId);
+        if (room.users.size === 0) {
+          rooms.delete(roomId);
+        }
+      }
+      socket.leave(roomId);
+      users.delete(socket.id);
+      console.log(`用户 ${userName} 主动离开房间 ${roomId}`);
+    }
+  });
+
   socket.on('update-cursor', (roomId, userId, cursorPosition) => {
     socket.to(roomId).emit('cursor-updated', userId, cursorPosition);
   });

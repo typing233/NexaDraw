@@ -481,7 +481,6 @@ function convertToStandardShape(type, element) {
       };
 
     case 'circle':
-      const radius = Math.max(width, height) / 2;
       return {
         id: element.id || uuidv4(),
         type: 'circle',

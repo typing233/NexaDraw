@@ -26,8 +26,8 @@ async function callArkAPI(apiConfig, messages, options = {}) {
     body: JSON.stringify({
       model,
       messages,
-      temperature: options.temperature || 0.7,
-      max_tokens: options.max_tokens || 4096,
+      temperature: 0.7,
+      max_tokens: 4096,
       ...options
     })
   });
