@@ -151,9 +151,11 @@ function parseGeneratedElements(response, chartType) {
     jsonContent = jsonMatch[1];
   }
   
-  const jsonMatch2 = response.match(/\{[\s\S]*\}/);
-  if (jsonMatch2 && !jsonMatch) {
-    jsonContent = jsonMatch2[0];
+  if (!jsonMatch) {
+    const jsonMatch2 = response.match(/(\[[\s\S]*\]|\{[\s\S]*\})/);
+    if (jsonMatch2) {
+      jsonContent = jsonMatch2[0];
+    }
   }
 
   try {

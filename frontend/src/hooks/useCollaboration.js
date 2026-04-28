@@ -13,6 +13,10 @@ export function useCollaboration({
 }) {
   const [isConnected, setIsConnected] = useState(false);
   const socketRef = useRef(null);
+  const callbacksRef = useRef({});
+
+  // Keep callbacks ref up-to-date on every render without causing reconnects
+  callbacksRef.current = { onElementUpdate, onElementDelete, onUserJoined, onUserLeft, onCursorUpdate, onRoomData };
 
   const connect = useCallback(() => {
     if (socketRef.current?.connected) return;
@@ -35,31 +39,31 @@ export function useCollaboration({
     });
 
     socket.on('room-data', (data) => {
-      onRoomData?.(data);
+      callbacksRef.current.onRoomData?.(data);
     });
 
     socket.on('element-updated', (element) => {
-      onElementUpdate?.(element);
+      callbacksRef.current.onElementUpdate?.(element);
     });
 
     socket.on('element-deleted', (elementId) => {
-      onElementDelete?.(elementId);
+      callbacksRef.current.onElementDelete?.(elementId);
     });
 
     socket.on('user-joined', (user) => {
-      onUserJoined?.(user);
+      callbacksRef.current.onUserJoined?.(user);
     });
 
     socket.on('user-left', (userId) => {
-      onUserLeft?.(userId);
+      callbacksRef.current.onUserLeft?.(userId);
     });
 
     socket.on('cursor-updated', (uid, position) => {
-      onCursorUpdate?.(uid, position);
+      callbacksRef.current.onCursorUpdate?.(uid, position);
     });
 
     socketRef.current = socket;
-  }, [onElementUpdate, onElementDelete, onUserJoined, onUserLeft, onCursorUpdate, onRoomData]);
+  }, []); // No callback deps needed — accessed via callbacksRef
 
   const disconnect = useCallback(() => {
     if (socketRef.current) {

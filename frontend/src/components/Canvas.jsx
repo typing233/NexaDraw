@@ -42,7 +42,8 @@ function Canvas({
   isConnected,
   apiConfig,
   selectedElementId,
-  onSelectedElementChange
+  onSelectedElementChange,
+  onCursorMove
 }) {
   const containerRef = useRef(null);
   const svgRef = useRef(null);
@@ -82,30 +83,37 @@ function Canvas({
 
   const finishTextEdit = useCallback(() => {
     if (editingTextElement) {
-      const updatedElement = {
-        ...editingTextElement,
-        text: editingText
-      };
-      onElementUpdate(updatedElement);
+      if (!editingText.trim()) {
+        onElementDelete(editingTextElement.id);
+      } else {
+        const updatedElement = {
+          ...editingTextElement,
+          text: editingText
+        };
+        onElementUpdate(updatedElement);
+      }
     }
     setEditingTextElement(null);
     setEditingText('');
-  }, [editingTextElement, editingText, onElementUpdate]);
+  }, [editingTextElement, editingText, onElementUpdate, onElementDelete]);
 
   const cancelTextEdit = useCallback(() => {
+    if (editingTextElement && !editingTextElement.text) {
+      onElementDelete(editingTextElement.id);
+    }
     setEditingTextElement(null);
     setEditingText('');
-  }, []);
+  }, [editingTextElement, onElementDelete]);
 
   const handlePointerDown = useCallback((e) => {
     const point = getScreenPoint(e.clientX, e.clientY);
     const currentTime = Date.now();
 
     if (editingTextElement) {
-      cancelTextEdit();
+      finishTextEdit();
     }
 
-    if (currentTool === 'hand' || (e.button === 1 && e.altKey)) {
+    if (currentTool === 'hand' || e.button === 1) {
       setIsPanning(true);
       setPanStart({ x: e.clientX, y: e.clientY });
       setOrigin({ x: camera.x, y: camera.y });
@@ -128,7 +136,6 @@ function Canvas({
           if (onSelectedElementChange) {
             onSelectedElementChange(el.id);
           }
-          setSelectedElementId?.(el.id);
           setLastClickedElementId(el.id);
           setLastClickTime(currentTime);
           
@@ -141,7 +148,6 @@ function Canvas({
       if (onSelectedElementChange) {
         onSelectedElementChange(null);
       }
-      setSelectedElementId?.(null);
       setLastClickedElementId(null);
       setLastClickTime(0);
       return;
@@ -158,11 +164,15 @@ function Canvas({
     const newElement = createNewElement(currentTool, point);
     setCurrentElement(newElement);
   }, [currentTool, camera, elements, getScreenPoint, selectedElementId,
-      editingTextElement, cancelTextEdit, startTextEdit,
-      lastClickTime, lastClickedElementId, onSelectedElementChange, setSelectedElementId]);
+      editingTextElement, finishTextEdit, cancelTextEdit, startTextEdit,
+      lastClickTime, lastClickedElementId, onSelectedElementChange]);
 
   const handlePointerMove = useCallback((e) => {
     const point = getScreenPoint(e.clientX, e.clientY);
+
+    if (onCursorMove) {
+      onCursorMove(point);
+    }
 
     if (isPanning) {
       setCamera(prev => ({
@@ -195,7 +205,7 @@ function Canvas({
       setCurrentElement(updatedElement);
     }
   }, [isDragging, isPanning, currentElement, currentTool, selectedElementId, elements,
-      panStart, origin, getScreenPoint, onElementUpdate]);
+      panStart, origin, getScreenPoint, onElementUpdate, onCursorMove]);
 
   const handlePointerUp = useCallback(async (e) => {
     if (isPanning) {
@@ -264,7 +274,6 @@ function Canvas({
           if (onSelectedElementChange) {
             onSelectedElementChange(null);
           }
-          setSelectedElementId?.(null);
         }
       }
     };
@@ -272,7 +281,14 @@ function Canvas({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedElementId, editingTextElement, onElementDelete, 
-      finishTextEdit, cancelTextEdit, onSelectedElementChange, setSelectedElementId]);
+      finishTextEdit, cancelTextEdit, onSelectedElementChange]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => container.removeEventListener('wheel', handleWheel);
+  }, [handleWheel]);
 
   return (
     <div
@@ -293,7 +309,6 @@ function Canvas({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerUp}
-      onWheel={handleWheel}
     >
       <svg
         ref={svgRef}
