@@ -101,6 +101,15 @@ function App() {
   }, [currentTheme]);
 
   const handleThemeChange = (themeName) => {
+    const updatedElements = applyThemeToAllElements(elements, themeName);
+    setElements(updatedElements);
+    
+    if (roomId && isConnected) {
+      updatedElements.forEach(element => {
+        sendElementUpdate(roomId, element);
+      });
+    }
+    
     setCurrentTheme(themeName);
     setShowThemePanel(false);
   };
@@ -226,10 +235,14 @@ function App() {
             }}
           />
           <button
-            onClick={() => setShowThemePanel(!showThemePanel)}
+            onClick={() => {
+              setShowThemePanel(!showThemePanel);
+              setShowSettings(false);
+              setShowAIPanel(false);
+            }}
             style={{
               padding: '6px 12px',
-              backgroundColor: '#8b5cf6',
+              backgroundColor: showThemePanel ? '#6d28d9' : '#8b5cf6',
               color: 'white',
               border: 'none',
               borderRadius: '4px',
@@ -243,10 +256,14 @@ function App() {
             <span>{getTheme(currentTheme)?.icon || '🎨'} 主题</span>
           </button>
           <button
-            onClick={() => setShowAIPanel(!showAIPanel)}
+            onClick={() => {
+              setShowAIPanel(!showAIPanel);
+              setShowSettings(false);
+              setShowThemePanel(false);
+            }}
             style={{
               padding: '6px 12px',
-              backgroundColor: '#4f46e5',
+              backgroundColor: showAIPanel ? '#3730a3' : '#4f46e5',
               color: 'white',
               border: 'none',
               borderRadius: '4px',
@@ -260,10 +277,14 @@ function App() {
             <span>AI 功能</span>
           </button>
           <button
-            onClick={() => setShowSettings(!showSettings)}
+            onClick={() => {
+              setShowSettings(!showSettings);
+              setShowThemePanel(false);
+              setShowAIPanel(false);
+            }}
             style={{
               padding: '6px 12px',
-              backgroundColor: '#f0f0f0',
+              backgroundColor: showSettings ? '#e0e0e0' : '#f0f0f0',
               border: '1px solid #ddd',
               borderRadius: '4px',
               cursor: 'pointer',

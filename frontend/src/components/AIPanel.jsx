@@ -1,19 +1,17 @@
 import React, { useState } from 'react';
 import { generateFromPrompt, autoOrganizeElements } from '../utils/aiService';
-import { recognizeShape } from '../utils/shapeRecognition';
 
-function AIPanel({ apiConfig, onGenerate, onAutoOrganize, onElementUpdate, elements, onClose }) {
+function AIPanel({ apiConfig, onGenerate, onAutoOrganize, elements, onClose }) {
   const [prompt, setPrompt] = useState('');
   const [chartType, setChartType] = useState('flowchart');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isOrganizing, setIsOrganizing] = useState(false);
-  const [isRefining, setIsRefining] = useState(false);
 
   const handleGenerate = async () => {
     if (!prompt.trim() || isGenerating) return;
     
     if (!apiConfig.apiKey) {
-      alert('请先在设置中配置火山方舟 API Key');
+      alert('请先在设置中配置API Key');
       return;
     }
 
@@ -43,7 +41,7 @@ function AIPanel({ apiConfig, onGenerate, onAutoOrganize, onElementUpdate, eleme
     }
 
     if (!apiConfig.apiKey) {
-      alert('请先在设置中配置火山方舟 API Key');
+      alert('请先在设置中配置API Key');
       return;
     }
 
@@ -61,46 +59,6 @@ function AIPanel({ apiConfig, onGenerate, onAutoOrganize, onElementUpdate, eleme
       alert('整理失败: ' + error.message);
     } finally {
       setIsOrganizing(false);
-    }
-  };
-
-  const handleRefineSketches = async () => {
-    const pencilElements = elements.filter(el => el.type === 'pencil');
-    
-    if (pencilElements.length === 0) {
-      alert('画布上没有需要精炼的草图元素');
-      return;
-    }
-
-    setIsRefining(true);
-    let refinedCount = 0;
-    
-    try {
-      for (const element of pencilElements) {
-        try {
-          const refinedElement = await recognizeShape(element, apiConfig);
-          
-          if (refinedElement && refinedElement.type !== 'pencil') {
-            refinedElement.id = element.id;
-            refinedElement.timestamp = Date.now();
-            onElementUpdate(refinedElement);
-            refinedCount++;
-          }
-        } catch (error) {
-          console.log('单个草图精炼失败:', error);
-        }
-      }
-      
-      if (refinedCount > 0) {
-        alert(`成功精炼 ${refinedCount} 个草图为矢量图形`);
-      } else {
-        alert('未能识别任何图形。请尝试绘制更清晰的形状。几何识别已自动应用。');
-      }
-    } catch (error) {
-      console.error('草图精炼失败:', error);
-      alert('精炼失败: ' + error.message);
-    } finally {
-      setIsRefining(false);
     }
   };
 
@@ -306,80 +264,6 @@ function AIPanel({ apiConfig, onGenerate, onAutoOrganize, onElementUpdate, eleme
               </>
             ) : (
               '生成图表'
-            )}
-          </button>
-        </div>
-
-        <div style={{
-          borderTop: '1px solid #e0e0e0',
-          paddingTop: '24px'
-        }}>
-          <h4 style={{
-            fontSize: '14px',
-            fontWeight: 600,
-            margin: '0 0 12px 0',
-            color: '#333'
-          }}>
-            ✏️ 草图转精细图
-          </h4>
-          <p style={{
-            fontSize: '12px',
-            color: '#666',
-            margin: '0 0 16px 0'
-          }}>
-            将手绘的粗糙线条自动转换为干净的矢量图形，不用自己一点点描边
-          </p>
-
-          <div style={{
-            backgroundColor: '#f0f9ff',
-            padding: '12px',
-            borderRadius: '6px',
-            marginBottom: '16px'
-          }}>
-            <p style={{
-              fontSize: '12px',
-              color: '#0369a1',
-              margin: 0,
-              lineHeight: 1.5
-            }}>
-              <strong>提示：</strong>当前画布有 {elements.filter(el => el.type === 'pencil').length} 个草图元素。
-              点击按钮后，系统将自动识别并转换为矩形、圆形、直线等标准矢量图形。
-            </p>
-          </div>
-
-          <button
-            onClick={handleRefineSketches}
-            disabled={isRefining}
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              backgroundColor: isRefining ? '#94a3b8' : '#0ea5e9',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: isRefining ? 'not-allowed' : 'pointer',
-              fontSize: '14px',
-              fontWeight: 500,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px'
-            }}
-          >
-            {isRefining ? (
-              <>
-                <span style={{
-                  width: '16px',
-                  height: '16px',
-                  border: '2px solid rgba(255,255,255,0.3)',
-                  borderTopColor: 'white',
-                  borderRadius: '50%',
-                  animation: 'spin 0.8s linear infinite'
-                }} />
-                正在精炼...
-              </>
-            ) : (
-              '草图转精细图'
             )}
           </button>
         </div>
