@@ -30,8 +30,8 @@ function CollaborationPanel({
   return (
     <div style={{
       position: 'absolute',
-      bottom: '60px',
-      right: '16px',
+      bottom: '16px',
+      left: '76px',
       width: '280px',
       backgroundColor: 'white',
       borderRadius: '8px',
