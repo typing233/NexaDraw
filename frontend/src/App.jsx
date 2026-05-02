@@ -6,6 +6,7 @@ import CollaborationPanel from './components/CollaborationPanel';
 import AIPanel from './components/AIPanel';
 import { useCollaboration } from './hooks/useCollaboration';
 import { v4 as uuidv4 } from 'uuid';
+import { THEMES, getTheme, applyThemeToAllElements } from './utils/themes';
 
 const TOOLS = {
   SELECT: 'select',
@@ -30,8 +31,13 @@ function App() {
   const [roomId, setRoomId] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showAIPanel, setShowAIPanel] = useState(false);
+  const [showThemePanel, setShowThemePanel] = useState(false);
   const [collaborators, setCollaborators] = useState([]);
   const [cursorPositions, setCursorPositions] = useState({});
+  
+  const [currentTheme, setCurrentTheme] = useState(() => {
+    return localStorage.getItem('nexadraw_theme') || 'default';
+  });
   
   const [apiConfig, setApiConfig] = useState(() => {
     const saved = localStorage.getItem('nexadraw_api_config');
@@ -89,6 +95,15 @@ function App() {
   useEffect(() => {
     localStorage.setItem('nexadraw_api_config', JSON.stringify(apiConfig));
   }, [apiConfig]);
+
+  useEffect(() => {
+    localStorage.setItem('nexadraw_theme', currentTheme);
+  }, [currentTheme]);
+
+  const handleThemeChange = (themeName) => {
+    setCurrentTheme(themeName);
+    setShowThemePanel(false);
+  };
 
   const handleElementUpdate = (element) => {
     setElements(prev => {
@@ -211,6 +226,23 @@ function App() {
             }}
           />
           <button
+            onClick={() => setShowThemePanel(!showThemePanel)}
+            style={{
+              padding: '6px 12px',
+              backgroundColor: '#8b5cf6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '13px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+            <span>{getTheme(currentTheme)?.icon || '🎨'} 主题</span>
+          </button>
+          <button
             onClick={() => setShowAIPanel(!showAIPanel)}
             style={{
               padding: '6px 12px',
@@ -266,6 +298,7 @@ function App() {
           selectedElementId={selectedElementId}
           onSelectedElementChange={setSelectedElementId}
           onSendCursorUpdate={sendCursorUpdate}
+          currentTheme={currentTheme}
         />
 
         {showSettings && (
@@ -276,11 +309,136 @@ function App() {
           />
         )}
 
+        {showThemePanel && (
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            width: '320px',
+            height: '100%',
+            backgroundColor: 'white',
+            borderLeft: '1px solid #e0e0e0',
+            boxShadow: '-2px 0 8px rgba(0,0,0,0.1)',
+            zIndex: 100,
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            <div style={{
+              padding: '16px',
+              borderBottom: '1px solid #e0e0e0',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <h3 style={{ fontSize: '16px', fontWeight: 600, margin: 0 }}>🎨 主题风格</h3>
+              <button
+                onClick={() => setShowThemePanel(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  fontSize: '20px',
+                  color: '#666'
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{ padding: '16px', overflowY: 'auto', flex: 1 }}>
+              <p style={{ fontSize: '12px', color: '#666', margin: '0 0 16px 0' }}>
+                选择一个主题风格，所有图形将自动应用新的颜色、阴影和线条样式
+              </p>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {Object.entries(THEMES).map(([key, theme]) => (
+                  <button
+                    key={key}
+                    onClick={() => handleThemeChange(key)}
+                    style={{
+                      width: '100%',
+                      padding: '16px',
+                      backgroundColor: currentTheme === key ? '#ede9fe' : '#fafafa',
+                      border: currentTheme === key ? '2px solid #8b5cf6' : '1px solid #e0e0e0',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (currentTheme !== key) {
+                        e.currentTarget.style.backgroundColor = '#f5f5f5';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (currentTheme !== key) {
+                        e.currentTarget.style.backgroundColor = '#fafafa';
+                      }
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span style={{ fontSize: '28px' }}>{theme.icon}</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ 
+                          fontSize: '14px', 
+                          fontWeight: currentTheme === key ? 600 : 500,
+                          color: currentTheme === key ? '#7c3aed' : '#333'
+                        }}>
+                          {theme.name}
+                          {currentTheme === key && <span style={{ marginLeft: '8px' }}>✓</span>}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>
+                          {theme.description}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ 
+                      display: 'flex', 
+                      gap: '6px', 
+                      marginTop: '12px',
+                      paddingTop: '12px',
+                      borderTop: '1px dashed #ddd'
+                    }}>
+                      <div style={{
+                        width: '20px',
+                        height: '20px',
+                        borderRadius: '4px',
+                        backgroundColor: theme.colors.primary
+                      }} />
+                      <div style={{
+                        width: '20px',
+                        height: '20px',
+                        borderRadius: '4px',
+                        backgroundColor: theme.colors.secondary
+                      }} />
+                      <div style={{
+                        width: '20px',
+                        height: '20px',
+                        borderRadius: '4px',
+                        backgroundColor: theme.colors.accent
+                      }} />
+                      <div style={{
+                        width: '20px',
+                        height: '20px',
+                        borderRadius: '4px',
+                        backgroundColor: theme.colors.background,
+                        border: '1px solid #ddd'
+                      }} />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {showAIPanel && (
           <AIPanel
             apiConfig={apiConfig}
             onGenerate={handleAIGenerate}
             onAutoOrganize={handleAutoOrganize}
+            onElementUpdate={handleElementUpdate}
             elements={elements}
             onClose={() => setShowAIPanel(false)}
           />
