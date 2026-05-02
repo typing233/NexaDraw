@@ -235,11 +235,7 @@ function App() {
             }}
           />
           <button
-            onClick={() => {
-              setShowThemePanel(!showThemePanel);
-              setShowSettings(false);
-              setShowAIPanel(false);
-            }}
+            onClick={() => setShowThemePanel(!showThemePanel)}
             style={{
               padding: '6px 12px',
               backgroundColor: showThemePanel ? '#6d28d9' : '#8b5cf6',
@@ -256,11 +252,7 @@ function App() {
             <span>{getTheme(currentTheme)?.icon || '🎨'} 主题</span>
           </button>
           <button
-            onClick={() => {
-              setShowAIPanel(!showAIPanel);
-              setShowSettings(false);
-              setShowThemePanel(false);
-            }}
+            onClick={() => setShowAIPanel(!showAIPanel)}
             style={{
               padding: '6px 12px',
               backgroundColor: showAIPanel ? '#3730a3' : '#4f46e5',
@@ -277,11 +269,7 @@ function App() {
             <span>AI 功能</span>
           </button>
           <button
-            onClick={() => {
-              setShowSettings(!showSettings);
-              setShowThemePanel(false);
-              setShowAIPanel(false);
-            }}
+            onClick={() => setShowSettings(!showSettings)}
             style={{
               padding: '6px 12px',
               backgroundColor: showSettings ? '#e0e0e0' : '#f0f0f0',
@@ -327,6 +315,7 @@ function App() {
             apiConfig={apiConfig}
             onConfigChange={setApiConfig}
             onClose={() => setShowSettings(false)}
+            rightOffset={(showThemePanel ? 320 : 0) + (showAIPanel ? 360 : 0)}
           />
         )}
 
@@ -462,6 +451,7 @@ function App() {
             onElementUpdate={handleElementUpdate}
             elements={elements}
             onClose={() => setShowAIPanel(false)}
+            rightOffset={showThemePanel ? 320 : 0}
           />
         )}
 

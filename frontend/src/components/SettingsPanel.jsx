@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-function SettingsPanel({ apiConfig, onConfigChange, onClose }) {
+function SettingsPanel({ apiConfig, onConfigChange, onClose, rightOffset = 0 }) {
   const [localConfig, setLocalConfig] = useState(apiConfig);
 
   const handleSave = () => {
@@ -12,7 +12,7 @@ function SettingsPanel({ apiConfig, onConfigChange, onClose }) {
     <div style={{
       position: 'absolute',
       top: 0,
-      right: 0,
+      right: rightOffset,
       width: '320px',
       height: '100%',
       backgroundColor: 'white',
