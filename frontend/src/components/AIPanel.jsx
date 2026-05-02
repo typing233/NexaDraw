@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { generateFromPrompt, autoOrganizeElements } from '../utils/aiService';
 
-function AIPanel({ apiConfig, onGenerate, onAutoOrganize, elements, onClose }) {
+function AIPanel({ apiConfig, onGenerate, onAutoOrganize, elements, onClose, rightOffset = 0 }) {
   const [prompt, setPrompt] = useState('');
   const [chartType, setChartType] = useState('flowchart');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -84,7 +84,7 @@ function AIPanel({ apiConfig, onGenerate, onAutoOrganize, elements, onClose }) {
     <div style={{
       position: 'absolute',
       top: 0,
-      right: 0,
+      right: rightOffset,
       width: '360px',
       height: '100%',
       backgroundColor: 'white',
